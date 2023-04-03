@@ -7,6 +7,7 @@ use axum::{
     routing::{delete, get, post},
     Json, Router,
 };
+use axum_macros::debug_handler;
 use mongodb::bson::{oid::ObjectId, Document};
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -41,6 +42,56 @@ where
     Ok(Json(result))
 }
 
+async fn server_find_by_doc<T: 'static>(
+    ContextExtractor(context): ContextExtractor,
+    Json(document): Json<Document>,
+) -> ServiceResponse<Option<T>>
+where
+    T: Entity<T> + Serialize + DeserializeOwned + Sync + Send,
+{
+    let repository = context
+        .get_repository::<T>()
+        .ok_or(anyhow::anyhow!("Repository not found"))?;
+
+    let result = repository.find_by_doc(document, &context).await?;
+
+    Ok(Json(result))
+}
+
+async fn server_insert<T: 'static>(
+    ContextExtractor(context): ContextExtractor,
+    Json(entity): Json<T>,
+) -> ServiceResponse<bool>
+where
+    T: Entity<T> + Serialize + DeserializeOwned + Sync + Send,
+{
+    let repository = context
+        .get_repository::<T>()
+        .ok_or(anyhow::anyhow!("Repository not found"))?;
+
+    let result = repository.insert(&entity, &context).await?;
+
+    Ok(Json(result))
+}
+
+async fn server_delete<T: 'static>(
+    id: Path<String>,
+    ContextExtractor(context): ContextExtractor,
+) -> ServiceResponse<Option<T>>
+where
+    T: Entity<T> + Serialize + DeserializeOwned + Sync + Send,
+{
+    let id = ObjectId::from_str(&id)?;
+
+    let repository = context
+        .get_repository::<T>()
+        .ok_or(anyhow::anyhow!("Repository not found"))?;
+
+    let result = repository.delete(id, &context).await?;
+
+    Ok(Json(result))
+}
+
 impl Registrable for Router<Arc<ServiceState>, Body> {
     fn register<T>(self) -> Self
     where
@@ -49,12 +100,12 @@ impl Registrable for Router<Arc<ServiceState>, Body> {
         self.route(&format!("/api/{}/find/:id", T::NAME), get(server_find::<T>))
             .route(
                 &format!("/api/{}/find_by_doc", T::NAME),
-                post(server_find::<T>),
+                post(server_find_by_doc::<T>),
             )
-            .route(&format!("/api/{}/insert", T::NAME), post(server_find::<T>))
+            .route(&format!("/api/{}/insert", T::NAME), post(server_insert::<T>))
             .route(
                 &format!("/api/{}/delete/:id", T::NAME),
-                delete(server_find::<T>),
+                delete(server_delete::<T>),
             )
     }
 }
