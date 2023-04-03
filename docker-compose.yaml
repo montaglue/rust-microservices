@@ -17,7 +17,7 @@ services:
   auth:
     depends_on:
       - binaries
-    build: ./users
+    build: ./auth
     ports:
       - 3001:3001
     volumes:
