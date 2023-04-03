@@ -1,20 +1,56 @@
 use std::sync::Arc;
 
+use anyhow::bail;
+use axum::{async_trait, extract::FromRequestParts, http::request::Parts};
 use serde::Serialize;
 use type_map::concurrent::TypeMap;
 
-use crate::repository::Repository;
+use crate::{auth::Auth, error::ServiceError, repository::Repository};
 
-pub struct InnerContext {
+pub struct ServiceState {
     pub repositories: TypeMap,
     pub client: reqwest::Client,
+    pub auth: Auth,
 }
 
-pub struct Context(pub Arc<InnerContext>);
+pub struct HandlerContext {
+    pub user_auth: Option<Auth>,
+}
 
-impl Clone for Context {
-    fn clone(&self) -> Self {
-        Self(Arc::clone(&self.0))
+pub struct Context(pub Arc<ServiceState>, pub HandlerContext);
+
+pub struct ContextExtractor(pub Context);
+
+pub fn extract_token(parts: &Parts) -> anyhow::Result<Option<&str>> {
+    let Some(header) = parts.headers.get("Authorization") else {
+        return Ok(None)
+    };
+
+    let Some(token) = header.to_str()?.strip_prefix("Bearer ") else {
+        bail!("wrong token format")
+    };
+
+    Ok(Some(token))
+}
+
+#[async_trait]
+impl FromRequestParts<Arc<ServiceState>> for ContextExtractor {
+    type Rejection = ServiceError;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &Arc<ServiceState>,
+    ) -> Result<Self, Self::Rejection> {
+        let mut user_auth = None;
+
+        if let Some(token) = extract_token(parts)? {
+            user_auth = Some(Auth::from_token(token)?);
+        }
+
+        Ok(ContextExtractor(Context(
+            Arc::clone(state),
+            HandlerContext { user_auth },
+        )))
     }
 }
 
@@ -24,12 +60,14 @@ pub struct ServiceRequest<'a, 'b, T = ()> {
     method: reqwest::Method,
     url: Option<String>,
     body: Option<&'b T>,
+    auth: Auth,
 }
 
 impl<'a, 'b, T: Serialize> ServiceRequest<'a, 'b, T> {
-    pub fn new(client: &'a reqwest::Client) -> Self {
+    pub fn new(client: &'a reqwest::Client, auth: Auth) -> Self {
         Self {
             client,
+            auth,
             method: reqwest::Method::GET,
             url: None,
             body: None,
@@ -66,7 +104,6 @@ impl<'a, 'b, T: Serialize> ServiceRequest<'a, 'b, T> {
 
     pub async fn send(self) -> anyhow::Result<reqwest::Response> {
         let url = self.url.as_ref().unwrap();
-        let body = self.body.unwrap();
         let mut request = self.client.request(self.method, url);
         if let Some(body) = self.body {
             request = request.json(body);
@@ -74,22 +111,20 @@ impl<'a, 'b, T: Serialize> ServiceRequest<'a, 'b, T> {
         let response = request.send().await?;
         Ok(response)
     }
+
+    pub fn auth(mut self, auth: Auth) -> Self {
+        self.auth = auth;
+        self
+    }
 }
 
 impl Context {
-    pub fn new() -> Self {
-        Self(Arc::new(InnerContext {
-            repositories: TypeMap::new(),
-            client: reqwest::Client::new(),
-        }))
-    }
-
     pub fn get_repository<T: 'static>(&self) -> Option<Repository<T>> {
         self.0.repositories.get::<Repository<T>>().cloned()
     }
 
     pub fn make_request<T: Serialize>(&self) -> ServiceRequest<T> {
-        ServiceRequest::<T>::new(&self.0.client)
+        ServiceRequest::<T>::new(&self.0.client, self.0.auth.clone())
     }
 }
 

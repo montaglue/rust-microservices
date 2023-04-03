@@ -2,23 +2,21 @@ use std::{marker::PhantomData, str::FromStr, sync::Arc};
 
 use axum::{
     async_trait,
-    body::{Body, BoxBody},
-    extract::{Path, State},
-    routing::{delete, get, patch, post},
+    body::Body,
+    extract::Path,
+    routing::{delete, get, post},
     Json, Router,
 };
-use axum_macros::debug_handler;
 use mongodb::bson::{oid::ObjectId, Document};
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{
-    context::{Context, MutationContext},
-    entity::{AuthInfo, Entity},
-    error::{ServiceError, ServiceResponse},
-    repository,
+    context::{Context, ContextExtractor, ServiceState},
+    entity::Entity,
+    error::ServiceResponse,
 };
 
-use super::{ReadRepositoryTrait, Repository, RepositoryTrait};
+use super::{ReadRepositoryTrait, RepositoryTrait};
 
 pub trait Registrable {
     fn register<T>(self) -> Self
@@ -27,23 +25,23 @@ pub trait Registrable {
 }
 async fn server_find<T: 'static>(
     id: Path<String>,
-    state: State<Context>,
+    ContextExtractor(context): ContextExtractor,
 ) -> ServiceResponse<Option<T>>
 where
     T: Entity<T> + Serialize + DeserializeOwned + Sync + Send,
 {
     let id = ObjectId::from_str(&id)?;
 
-    let repository = state
+    let repository = context
         .get_repository::<T>()
         .ok_or(anyhow::anyhow!("Repository not found"))?;
 
-    let result = repository.find(id, &state).await?;
+    let result = repository.find(&id, &context).await?;
 
     Ok(Json(result))
 }
 
-impl Registrable for Router<Context, Body> {
+impl Registrable for Router<Arc<ServiceState>, Body> {
     fn register<T>(self) -> Self
     where
         T: Entity<T> + Serialize + DeserializeOwned + Sync + Send + 'static,
@@ -78,7 +76,7 @@ where
     T: Entity<T> + Serialize + DeserializeOwned + Sync + Send,
     Self: Sync,
 {
-    async fn find(&self, id: ObjectId, context: &Context) -> anyhow::Result<Option<T>> {
+    async fn find(&self, id: &ObjectId, context: &Context) -> anyhow::Result<Option<T>> {
         let response = context
             .make_request::<()>() // TODO request with service jwt
             .get(format!(
@@ -114,7 +112,7 @@ where
     T: Entity<T> + Serialize + DeserializeOwned + Sync + Send,
     Self: Sync,
 {
-    async fn insert(&self, entity: T, context: &Context) -> anyhow::Result<bool> {
+    async fn insert(&self, entity: &T, context: &Context) -> anyhow::Result<bool> {
         let response = context
             .make_request()
             .post(format!("{}://{}/api/project/insert", "http", self.origin))

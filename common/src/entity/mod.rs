@@ -242,10 +242,6 @@ impl<RootRef: Entity<RootRef>, T: Entity<RootRef> + Clone + Sync> Entity<RootRef
         ctx: &mut MutationContext,
         method: Method,
     ) -> anyhow::Result<bool> {
-        let Some(auth_repo) = ctx.context.get_repository::<AuthInfo>() else {
-            anyhow::bail!("No repository found for AuthInfo");
-        };
-
         let res = self.value.after_execution(ctx, method);
         res.await
     }

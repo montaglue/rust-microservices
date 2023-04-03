@@ -11,13 +11,13 @@ pub mod mongo;
 
 #[async_trait]
 pub trait ReadRepositoryTrait<T> {
-    async fn find(&self, id: ObjectId, context: &Context) -> anyhow::Result<Option<T>>;
+    async fn find(&self, id: &ObjectId, context: &Context) -> anyhow::Result<Option<T>>;
     async fn find_by_doc(&self, doc: Document, context: &Context) -> anyhow::Result<Option<T>>;
 }
 
 #[async_trait]
 pub trait RepositoryTrait<T>: ReadRepositoryTrait<T> {
-    async fn insert(&self, entity: T, context: &Context) -> anyhow::Result<bool>;
+    async fn insert(&self, entity: &T, context: &Context) -> anyhow::Result<bool>;
     async fn delete(&self, entity: ObjectId, context: &Context) -> anyhow::Result<Option<T>>;
 }
 
@@ -31,7 +31,7 @@ impl<T> Clone for Repository<T> {
 
 #[async_trait]
 impl<T> ReadRepositoryTrait<T> for Repository<T> {
-    async fn find(&self, id: ObjectId, context: &Context) -> anyhow::Result<Option<T>> {
+    async fn find(&self, id: &ObjectId, context: &Context) -> anyhow::Result<Option<T>> {
         self.0.find(id, context).await
     }
 
@@ -46,7 +46,7 @@ where
     T: Entity<T> + Serialize + DeserializeOwned + Sync + Send,
     Self: Sync,
 {
-    async fn insert(&self, entity: T, context: &Context) -> anyhow::Result<bool> {
+    async fn insert(&self, entity: &T, context: &Context) -> anyhow::Result<bool> {
         let future = self.0.insert(entity, context);
         future.await
     }
