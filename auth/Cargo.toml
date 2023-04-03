@@ -10,5 +10,5 @@ common = { path = "../common" }
 mongodb = "2.4.0"
 tokio = "1.26.0"
 axum = "0.6.11"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] } # for benchmarks and anaysys
+serde = { version = "1.0.156", features = ["derive"] }
+anyhow = "1.0.69"

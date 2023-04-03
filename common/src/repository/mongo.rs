@@ -10,15 +10,7 @@ use crate::{
     entity::Entity,
 };
 
-use super::{ReadRepositoryTrait, RepositoryTrait};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Method {
-    Insert,
-    Find,
-    FindByDoc,
-    Delete,
-}
+use super::{Method, ReadRepositoryTrait, RepositoryTrait};
 
 pub struct MongoRepository<T>(Collection<T>);
 

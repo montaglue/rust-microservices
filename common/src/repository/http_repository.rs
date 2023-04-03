@@ -46,22 +46,16 @@ impl Registrable for Router<Arc<ServiceState>, Body> {
     where
         T: Entity<T> + Serialize + DeserializeOwned + Sync + Send + 'static,
     {
-        self.route(
-            &format!("/api/{}/find/:id", T::name()),
-            get(server_find::<T>),
-        )
-        .route(
-            &format!("/api/{}/find_by_doc", T::name()),
-            post(server_find::<T>),
-        )
-        .route(
-            &format!("/api/{}/insert", T::name()),
-            post(server_find::<T>),
-        )
-        .route(
-            &format!("/api/{}/delete/:id", T::name()),
-            delete(server_find::<T>),
-        )
+        self.route(&format!("/api/{}/find/:id", T::NAME), get(server_find::<T>))
+            .route(
+                &format!("/api/{}/find_by_doc", T::NAME),
+                post(server_find::<T>),
+            )
+            .route(&format!("/api/{}/insert", T::NAME), post(server_find::<T>))
+            .route(
+                &format!("/api/{}/delete/:id", T::NAME),
+                delete(server_find::<T>),
+            )
     }
 }
 
@@ -82,7 +76,7 @@ where
             .get(format!(
                 "{}://{}/api/{}/find/{}",
                 "http",
-                T::name(),
+                T::NAME,
                 "test",
                 id.to_hex()
             ))

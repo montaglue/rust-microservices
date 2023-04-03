@@ -9,6 +9,14 @@ use crate::{context::Context, entity::Entity};
 pub mod http_repository;
 pub mod mongo;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Method {
+    Insert,
+    Find,
+    FindByDoc,
+    Delete,
+}
+
 #[async_trait]
 pub trait ReadRepositoryTrait<T> {
     async fn find(&self, id: &ObjectId, context: &Context) -> anyhow::Result<Option<T>>;
