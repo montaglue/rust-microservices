@@ -5,12 +5,30 @@ use axum::{async_trait, extract::FromRequestParts, http::request::Parts};
 use serde::Serialize;
 use type_map::concurrent::TypeMap;
 
-use crate::{auth::Auth, error::ServiceError, repository::Repository};
+use crate::{
+    auth::Auth,
+    error::ServiceError,
+    repository::{Repository, RepositoryTrait},
+};
 
 pub struct ServiceState {
     pub repositories: TypeMap,
     pub client: reqwest::Client,
     pub auth: Auth,
+}
+
+impl ServiceState {
+    pub fn new(service_name: String) -> Self {
+        Self {
+            repositories: TypeMap::new(),
+            client: reqwest::Client::new(),
+            auth: Auth::Service(service_name),
+        }
+    }
+
+    pub fn insert<T>(&mut self, repository: impl RepositoryTrait<T> + Send + Sync + 'static) {
+        self.repositories.insert(repository);
+    }
 }
 
 pub struct HandlerContext {

@@ -1,0 +1,44 @@
+version: "3.8"
+
+x-common-variables: &common-variables
+  MONGOURI: "mongodb://database/"
+  RUST_LOG: actix,reqwest,search
+  JWT_SECRET: "laskdflasdlfasldf"
+  AUTH_URL: "45.131.67.91:3001"
+
+
+services:
+  binaries:
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    volumes:
+      - binaries:/data/binaries
+  auth:
+    depends_on:
+      - binaries
+    build: ./users
+    ports:
+      - 3001:3001
+    volumes:
+      - binaries:/data/binaries
+    environment:
+      <<: *common-variables
+    networks:
+      - database
+  database:
+    image: mongo:4.2
+    expose:
+      - 27017
+    volumes:
+      - database:/data/db
+    networks:
+      - database
+volumes:
+  database:
+  binaries:
+  files:
+networks:
+  nginx-proxy:
+    external: true
+  database:

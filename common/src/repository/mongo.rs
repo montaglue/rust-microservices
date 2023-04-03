@@ -14,6 +14,17 @@ use super::{Method, ReadRepositoryTrait, RepositoryTrait};
 
 pub struct MongoRepository<T>(Collection<T>);
 
+impl<T> MongoRepository<T> {
+    pub async fn new(mongo_uri: &str, database: &str, collection: &str) -> Self {
+        let collection = mongodb::Client::with_uri_str(mongo_uri)
+            .await
+            .unwrap()
+            .database(database)
+            .collection(collection);
+        Self(collection)
+    }
+}
+
 #[async_trait]
 impl<T> ReadRepositoryTrait<T> for MongoRepository<T>
 where
