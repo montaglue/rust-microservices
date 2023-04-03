@@ -15,7 +15,7 @@ async fn main() {
     let mut state = ServiceState::new("auth".to_string());
     state.insert(Repository(Arc::new(MongoRepository::<Login>::new(&mongo_uri, "auth", "auth").await)));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
 
     let router = Router::new()
         .register::<Login>()
