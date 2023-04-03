@@ -155,6 +155,7 @@ dependencies = [
  "common",
  "mongodb",
  "serde",
+ "serde_json",
  "tokio",
  "tracing",
  "tracing-subscriber",

@@ -35,7 +35,6 @@ pub trait Entity<RootRef> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OptionallyPrivate<T> {
     pub is_private: bool,
-    #[serde(flatten)]
     pub value: T,
 }
 
@@ -74,8 +73,13 @@ impl<RootRef: Entity<RootRef>, T: Entity<RootRef> + Clone + Sync> Entity<RootRef
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Private<T> {
-    #[serde(flatten)]
     pub value: T,
+}
+
+impl<T> Private<T> {
+    pub fn new(value: T) -> Self {
+        Self { value }
+    }
 }
 
 #[async_trait]
@@ -108,14 +112,18 @@ impl<RootRef: Entity<RootRef>, T: Entity<RootRef> + Clone + Sync> Entity<RootRef
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InsertCondition<T> {
-    #[serde(flatten)]
     pub value: T,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Unique<T> {
-    #[serde(flatten)]
     pub value: T,
+}
+
+impl<T> Unique<T> {
+    pub fn new(value: T) -> Self {
+        Self { value }
+    }
 }
 
 #[async_trait]
